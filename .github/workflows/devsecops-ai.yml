@@ -1,0 +1,26 @@
+name: AI Security Pipeline
+on: [pull_request] # This triggers the AI when a PR is opened
+
+jobs:
+  scan-and-fix:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write # Allows the script to comment on your code
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run Checkov Security Scan
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: .
+          soft_fail: true # Prevents the pipeline from stopping so the AI can run
+
+      - name: Trigger AI Remediation
+        env:
+          AZURE_OPENAI_KEY: ${{ secrets.AZURE_OPENAI_KEY }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          pip install requests
+          python remediate_ai.py
