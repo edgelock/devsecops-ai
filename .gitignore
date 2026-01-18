@@ -1,0 +1,10 @@
+# Ignore local terraform directories
+.terraform/
+# Ignore state files (which can contain passwords)
+*.tfstate
+*.tfstate.*
+# Ignore plan files (contain all infrastructure details)
+*.tfplan
+# Ignore variables that might have secrets
+*.tfvars
+*.tfvars.json
