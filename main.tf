@@ -30,3 +30,5 @@ resource "azurerm_storage_account" "insecure" {
   # SECURITY FLAW: Allowing public access
   public_network_access_enabled = true 
 }
+
+# End of File
