@@ -31,3 +31,19 @@ resource "azurerm_storage_account" "insecure" {
   public_network_access_enabled = true 
 }
 
+# VULNERABILITY 2: Public Key Vault
+# This exposes sensitive secrets to the public internet
+resource "azurerm_key_vault" "insecure_kv" {
+  name                        = "aisecuritylab99kv"
+  location                    = azurerm_resource_group.lab.location
+  resource_group_name         = azurerm_resource_group.lab.name
+  enabled_for_disk_encryption = true
+  tenant_id                   = "3c54bdde-9890-4f71-820c-b31ae8240cd6" # Matches your subscription
+  sku_name                    = "standard"
+
+  # SECURITY FLAW: Allows access from all networks
+  network_acls {
+    bypass         = "AzureServices"
+    default_action = "Allow"
+  }
+}
