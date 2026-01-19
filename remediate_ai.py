@@ -1,41 +1,41 @@
-import os
-import requests
+import os, requests, json
 
-# --- 1. SET UP CREDENTIALS ---
-# We fetch these from GitHub's secret storage
+# --- 1. SETUP ---
 api_key = os.getenv("AZURE_OPENAI_KEY")
 endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
 gh_token = os.getenv("GITHUB_TOKEN")
 repo = os.getenv("GITHUB_REPOSITORY")
 pr_number = os.getenv("PR_NUMBER")
 
-def get_ai_fix(issue_description):
-    """Sends a security error to Azure AI and asks for the corrected code."""
-    headers = {"Content-Type": "application/json", "api-key": api_key}
+# YOUR DEPLOYMENT NAME
+DEPLOY_NAME = "security-expert-model"
+
+def get_ai_fix(issue):
+    # This cleans the URL and adds the exact path from your successful cURL test
+    base_url = endpoint.split("/openai")[0].rstrip("/")
+    url = f"{base_url}/openai/deployments/{DEPLOY_NAME}/chat/completions?api-version=2024-02-15-preview"
     
-    # We tell the AI how to behave (The System Prompt)
+    headers = {"Content-Type": "application/json", "api-key": api_key}
     data = {
         "messages": [
-            {"role": "system", "content": "You are a DevSecOps Lead. Provide the specific Terraform HCL code line to fix the reported security vulnerability."},
-            {"role": "user", "content": f"How do I fix this Terraform vulnerability: {issue_description}"}
-        ],
-        "max_tokens": 300
+            {"role": "system", "content": "You are a DevSecOps expert. Provide the HCL code to fix the issue."},
+            {"role": "user", "content": f"Fix this: {issue}"}
+        ]
     }
+    
+    print(f"DEBUG: Calling AI at {url}")
+    response = requests.post(url, headers=headers, json=data)
+    
+    if response.status_code == 200:
+        # Extract the content just like your cURL output showed
+        return response.json()['choices'][0]['message']['content']
+    else:
+        print(f"!!! API ERROR: {response.status_code} - {response.text}")
+        return None
 
-    # Request the fix from your Azure model
-    response = requests.post(f"{endpoint}/openai/deployments/security-fixer/chat/completions?api-version=2024-02-15-preview", 
-                             headers=headers, json=data)
-    return response.json()['choices'][0]['message']['content']
-
-def post_comment_to_pr(ai_message):
-    """Automatically posts the AI's advice to your GitHub Pull Request."""
-    url = f"https://api.github.com/repos/{repo}/issues/{pr_number}/comments"
-    headers = {"Authorization": f"token {gh_token}", "Accept": "application/vnd.github.v3+json"}
-    requests.post(url, headers=headers, json={"body": f"### 🛡️ AI Security Remediation\n\n{ai_message}"})
-
-# --- 2. EXECUTE ---
 if pr_number:
-    # We are simulating a scan result here for the lab
-    security_flaw = "Storage account 'insecure' has 'public_network_access_enabled' set to true."
-    fix_suggestion = get_ai_fix(security_flaw)
-    post_comment_to_pr(fix_suggestion)
+    fix = get_ai_fix("Storage account has public_network_access_enabled = true.")
+    if fix:
+        # Post the fix as a comment on the Pull Request
+        comment_url = f"https://api.github.com/repos/{repo}/issues/{pr_number}/comments"
+        requests.post(comment_url, headers={"Authorization": f"token {gh_token}"}, json={"body": f"### 🛡️ AI Security Fix\n\n{fix}"})
