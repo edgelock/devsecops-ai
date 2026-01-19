@@ -31,4 +31,3 @@ resource "azurerm_storage_account" "insecure" {
   public_network_access_enabled = true 
 }
 
-# End of File
